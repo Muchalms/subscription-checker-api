@@ -1,0 +1,8 @@
+{
+  "name": "subscription-checker-api",
+  "version": "1.0.0",
+  "description": "Netlify function for subscription checking",
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}

@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 
-exports.handler = async (event, context) => {
+exports.handler = async (event, context) =&gt; {
     const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
@@ -8,11 +8,7 @@ exports.handler = async (event, context) => {
     };
 
     if (event.httpMethod === 'OPTIONS') {
-        return { 
-            statusCode: 200, 
-            headers, 
-            body: '' 
-        };
+        return { statusCode: 200, headers, body: '' };
     }
 
     if (event.httpMethod !== 'POST') {
@@ -25,18 +21,19 @@ exports.handler = async (event, context) => {
 
     try {
         const requestBody = JSON.parse(event.body || '{}');
-        const email = requestBody.email;
+        const subscriptionId = requestBody.subscriptionId;
         
-        if (!email) {
+        if (!subscriptionId) {
             return {
                 statusCode: 400,
                 headers,
-                body: JSON.stringify({ error: 'Email is required' })
+                body: JSON.stringify({ error: 'Subscription ID is required' })
             };
         }
 
-        console.log('Checking subscription for:', email);
+        console.log('Checking subscription ID:', subscriptionId);
         
+        // Consultar Shopify para verificar la suscripción
         const shopifyResponse = await fetch('https://entredementes.myshopify.com/admin/api/2024-01/graphql.json', {
             method: 'POST',
             headers: {
@@ -45,41 +42,32 @@ exports.handler = async (event, context) => {
             },
             body: JSON.stringify({
                 query: `
-                    query ($email: String!, $first: Int!) {
-                        customers(first: $first, query: $email) {
-                            nodes {
-                                id
-                                email
-                                firstName
-                                lastName
-                                createdAt
-                                orders(first: 20) {
-                                    nodes {
-                                        id
-                                        name
-                                        createdAt
-                                        totalPrice
-                                        lineItems(first: 10) {
-                                            nodes {
-                                                title
-                                                quantity
-                                                variant {
-                                                    product {
-                                                        title
-                                                        tags
-                                                    }
-                                                }
-                                            }
-                                        }
+                    query ($subscriptionId: ID!) {
+                        subscriptionContract(id: $subscriptionId) {
+                            id
+                            status
+                            nextBillingDate
+                            createdAt
+                            lines(first: 5) {
+                                nodes {
+                                    title
+                                    quantity
+                                    currentPrice {
+                                        amount
+                                        currencyCode
                                     }
                                 }
+                            }
+                            customer {
+                                firstName
+                                lastName
+                                email
                             }
                         }
                     }
                 `,
                 variables: {
-                    email: 'email:' + email,
-                    first: 1
+                    subscriptionId: subscriptionId
                 }
             })
         });
@@ -90,10 +78,40 @@ exports.handler = async (event, context) => {
 
         const data = await shopifyResponse.json();
         
+        if (data.errors) {
+            throw new Error(data.errors[0].message);
+        }
+
+        const subscription = data.data.subscriptionContract;
+        
+        if (!subscription) {
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    valid: false,
+                    message: 'ID de suscripción no encontrado'
+                })
+            };
+        }
+
+        // Verificar si la suscripción está activa
+        const isActive = subscription.status === 'ACTIVE';
+        
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                valid: isActive,
+                subscription: {
+                    id: subscription.id,
+                    status: subscription.status,
+                    nextBillingDate: subscription.nextBillingDate,
+                    createdAt: subscription.createdAt,
+                    customer: subscription.customer,
+                    lines: subscription.lines.nodes
+                }
+            })
         };
         
     } catch (error) {
@@ -108,5 +126,6 @@ exports.handler = async (event, context) => {
         };
     }
 };
+
 
 

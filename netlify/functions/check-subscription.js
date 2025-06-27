@@ -3,12 +3,18 @@ const fetch = require('node-fetch');
 exports.handler = async (event, context) =&gt; {
     const headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+        'Access-Control-Max-Age': '86400'
     };
 
+    // Handle preflight requests
     if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 200, headers, body: '' };
+        return { 
+            statusCode: 200, 
+            headers, 
+            body: '' 
+        };
     }
 
     if (event.httpMethod !== 'POST') {
@@ -21,7 +27,7 @@ exports.handler = async (event, context) =&gt; {
 
     try {
         const requestBody = JSON.parse(event.body || '{}');
-        const subscriptionId = requestBody.subscriptionId;
+        let subscriptionId = requestBody.subscriptionId;
         
         if (!subscriptionId) {
             return {
@@ -29,6 +35,11 @@ exports.handler = async (event, context) =&gt; {
                 headers,
                 body: JSON.stringify({ error: 'Subscription ID is required' })
             };
+        }
+
+        // Convertir ID numérico a formato GraphQL si es necesario
+        if (!subscriptionId.startsWith('gid://')) {
+            subscriptionId = `gid://shopify/SubscriptionContract/${subscriptionId}`;
         }
 
         console.log('Checking subscription ID:', subscriptionId);
@@ -58,11 +69,6 @@ exports.handler = async (event, context) =&gt; {
                                     }
                                 }
                             }
-                            customer {
-                                firstName
-                                lastName
-                                email
-                            }
                         }
                     }
                 `,
@@ -73,12 +79,16 @@ exports.handler = async (event, context) =&gt; {
         });
 
         if (!shopifyResponse.ok) {
-            throw new Error('Shopify API error: ' + shopifyResponse.status);
+            const errorText = await shopifyResponse.text();
+            console.error('Shopify API error:', shopifyResponse.status, errorText);
+            throw new Error(`Shopify API error: ${shopifyResponse.status}`);
         }
 
         const data = await shopifyResponse.json();
+        console.log('Shopify response:', JSON.stringify(data, null, 2));
         
         if (data.errors) {
+            console.error('GraphQL errors:', data.errors);
             throw new Error(data.errors[0].message);
         }
 
@@ -108,7 +118,6 @@ exports.handler = async (event, context) =&gt; {
                     status: subscription.status,
                     nextBillingDate: subscription.nextBillingDate,
                     createdAt: subscription.createdAt,
-                    customer: subscription.customer,
                     lines: subscription.lines.nodes
                 }
             })
@@ -126,6 +135,7 @@ exports.handler = async (event, context) =&gt; {
         };
     }
 };
+
 
 
 

@@ -59,7 +59,6 @@ exports.handler = async (event, context) => {
                                         name
                                         createdAt
                                         totalPrice
-                                        financialStatus
                                         lineItems(first: 10) {
                                             nodes {
                                                 title
@@ -109,4 +108,5 @@ exports.handler = async (event, context) => {
         };
     }
 };
+
 

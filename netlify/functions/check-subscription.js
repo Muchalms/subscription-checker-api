@@ -1,38 +1,20 @@
-exports.handler = async (event, context) =&gt; {
-    // Headers CORS más completos
+exports.handler = async (event, context) => {
     const headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, X-Requested-With',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Max-Age': '86400',
-        'Content-Type': 'application/json'
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
     };
 
-    // Manejar solicitudes OPTIONS (preflight)
     if (event.httpMethod === 'OPTIONS') {
-        console.log('Handling OPTIONS request');
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ message: 'CORS preflight successful' })
-        };
+        return { statusCode: 200, headers, body: '' };
     }
 
-    // Solo permitir POST
     if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({ error: 'Method Not Allowed' })
-        };
+        return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method Not Allowed' }) };
     }
 
     try {
-        console.log('Processing POST request');
-        console.log('Event body:', event.body);
-        
-        const requestBody = JSON.parse(event.body || '{}');
-        let subscriptionId = requestBody.subscriptionId;
+        const { subscriptionId } = JSON.parse(event.body || '{}');
         
         if (!subscriptionId) {
             return {
@@ -42,29 +24,28 @@ exports.handler = async (event, context) =&gt; {
             };
         }
 
-        // Convertir ID numérico a formato GraphQL si es necesario
-        if (!subscriptionId.startsWith('gid://')) {
-            subscriptionId = `gid://shopify/SubscriptionContract/${subscriptionId}`;
-        }
-
         console.log('Checking subscription ID:', subscriptionId);
-
-        // Por ahora, simulamos la respuesta para probar CORS
-        if (subscriptionId.includes('14994637052')) {
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({
-                    valid: true,
-                    subscription: {
-                        id: subscriptionId,
-                        status: 'ACTIVE',
-                        nextBillingDate: '2024-08-01T00:00:00Z',
-                        createdAt: '2024-07-01T00:00:00Z'
-                    }
-                })
-            };
-        } else {
+        
+        // Base de datos base (se actualizará con Flow)
+        const baseSubscriptions = {
+            '14994637052': {
+                id: '14994637052',
+                status: 'ACTIVE',
+                customer: 'Luis Rivero',
+                email: 'muchalmanomada@gmail.com',
+                nextBillingDate: '2024-08-27',
+                createdAt: '2024-06-27',
+                plan: 'Membresía Premium'
+            }
+        };
+        
+        // En el futuro, aquí leerías de una base de datos real
+        // que se actualiza con los webhooks de Flow
+        const validSubscriptions = await getValidSubscriptions(baseSubscriptions);
+        
+        const subscription = validSubscriptions[subscriptionId];
+        
+        if (!subscription) {
             return {
                 statusCode: 200,
                 headers,
@@ -75,6 +56,17 @@ exports.handler = async (event, context) =&gt; {
             };
         }
 
+        const isActive = subscription.status === 'ACTIVE';
+        
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                valid: isActive,
+                subscription: subscription
+            })
+        };
+        
     } catch (error) {
         console.error('Function error:', error);
         return {
@@ -87,6 +79,16 @@ exports.handler = async (event, context) =&gt; {
         };
     }
 };
+
+// Función para obtener suscripciones válidas
+async function getValidSubscriptions(baseSubscriptions) {
+    // Por ahora retorna las base
+    // En el futuro, aquí consultarías una base de datos
+    // que se actualiza con los webhooks
+    
+    return baseSubscriptions;
+}
+
 
 
 

@@ -105,7 +105,7 @@ async function getSubscriptionsFromGoogleSheets() {
                         status: status || 'ACTIVE',
                         nextBillingDate: nextBilling || '',
                         createdAt: createdAt || '',
-                        plan: plan || 'Membresía Premium'
+                        plan: plan || 'Demente'
                     };
                 }
             }
@@ -117,7 +117,7 @@ async function getSubscriptionsFromGoogleSheets() {
     } catch (error) {
         console.error('Error fetching from Google Sheets:', error);
         
-        // Fallback a datos estáticos si Google Sheets falla
+        // Fallback a datos estáticos con nombres reales de productos
         return {
             '14994637052': {
                 id: '14994637052',
@@ -126,7 +126,25 @@ async function getSubscriptionsFromGoogleSheets() {
                 email: 'muchalmanomada@gmail.com',
                 nextBillingDate: '2024-08-27',
                 createdAt: '2024-06-27',
-                plan: 'Membresía Premium'
+                plan: 'Demente'
+            },
+            'SUB001': {
+                id: 'SUB001',
+                status: 'ACTIVE',
+                customer: 'María García',
+                email: 'maria@example.com',
+                nextBillingDate: '2024-08-30',
+                createdAt: '2024-07-30',
+                plan: 'TruFan'
+            },
+            'SUB002': {
+                id: 'SUB002',
+                status: 'ACTIVE',
+                customer: 'Carlos López',
+                email: 'carlos@example.com',
+                nextBillingDate: '2024-09-01',
+                createdAt: '2024-08-01',
+                plan: 'Normi'
             }
         };
     }
@@ -154,6 +172,7 @@ function parseCSVLine(line) {
     result.push(current.trim());
     return result;
 }
+
 
 
 
